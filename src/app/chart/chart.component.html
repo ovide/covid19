@@ -1,0 +1,21 @@
+
+<h1>Gràfiques evolució COVID-19</h1>
+<p>Datasets</p>
+<ul class="list-group">
+    <li class="list-group-item">
+        <a href="https://github.com/datadista/datasets/raw/master/COVID%2019/ccaa_covid19_fallecidos.csv">
+            Morts per comunitat autònoma
+        </a>
+    </li>
+    <li class="list-group-item">
+        <a target="_blank" href="https://es.statista.com/estadisticas/472413/poblacion-de-espana-por-comunidad-autonoma/">
+            Població per comunitat autònoma
+        </a>
+    </li>
+</ul>
+<small>Només es mostren comunitats amb més de {{ limit }} morts cada {{ pond | number }} habitants</small>
+<hr>
+<div *ngIf="ready" echarts [options]="totalDeaths" class="chart"></div>
+<hr>
+<div *ngIf="ready" echarts [options]="incDeaths" class="chart"></div>
+<hr>
