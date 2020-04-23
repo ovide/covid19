@@ -39,7 +39,7 @@ export class ChartComponent implements OnInit {
   totalDeaths = {
     title: {
       show: true,
-      text: 'Morts per comunitat',
+      text: 'Morts per comunitat acumulatiu',
       subtext: 'Cada 100.000 habitants',
     },
     xAxis: {
@@ -59,8 +59,28 @@ export class ChartComponent implements OnInit {
   incDeaths = {
     title: {
       show: true,
-      text: 'Variació diaria de morts per comunitat',
+      text: 'Morts diaris per comunitat',
       subtext: 'Cada 100.000 habitants',
+    },
+    xAxis: {
+      type: 'category',
+      data: []
+    },
+    yAxis: {
+      type: 'value',
+    },
+    series: [],
+    legend: {
+      type: 'plain',
+      bottom: 0,
+    }
+  };
+
+  incDeathsLine = {
+    title: {
+      show: true,
+      text: 'Morts diaris per comunitat (suavitzat)',
+      subtext: 'Morts cada 100.000 habitants',
     },
     xAxis: {
       type: 'category',
@@ -79,18 +99,26 @@ export class ChartComponent implements OnInit {
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
-    const deaths = 'https://github.com/datadista/datasets/raw/master/COVID%2019/ccaa_covid19_fallecidos.csv';
+    const deaths = 'https://raw.githack.com/datadista/datasets/master/COVID 19/ccaa_covid19_fallecidos.csv';
     this.http.get(deaths, {responseType: 'text'}).pipe(map((file: string) => {
       return this.csv2array(file);
     })).subscribe(items => {
       this.totalDeaths.xAxis.data = items.shift().slice(2);
       this.incDeaths.xAxis.data = this.totalDeaths.xAxis.data;
+      this.incDeathsLine.xAxis.data = this.totalDeaths.xAxis.data;
+      const sum = [];
+      for (let i = 0; i < items[0].length - 2; i++) {
+        sum[i] = 0;
+      }
       items.forEach(line => {
         const id = line.shift();
         if ((id !== '00') && (id !== '')) {
           const name = line.shift();
           const iline: Array<number> = line.map(item => parseInt(item, 10));
           const total = iline.map(item => item * this.pond / (this.pop[id]));
+          iline.forEach((item, index) => {
+            sum[index] += item * this.pond / 46940000;
+          });
           const inc = [];
           Object.keys(iline).forEach(idx => {
             const cur = parseInt(idx, 10);
@@ -98,26 +126,55 @@ export class ChartComponent implements OnInit {
               inc.push(0);
             }
             const prev = cur - 1;
-            inc.push((iline[cur] * this.pond / (this.pop[id])) - (iline[prev] * this.pond / (this.pop[id])));
+            const diff = (iline[cur] * this.pond / (this.pop[id])) - (iline[prev] * this.pond / (this.pop[id]));
+            inc.push(diff > 0 ? diff : 0);
           });
           if (total[total.length - 1] > this.limit ) {
             this.totalDeaths.series.push({
               type: 'line',
               name,
               smooth: true,
-              data: total
+              data: total,
             });
             this.incDeaths.series.push({
               type: 'bar',
               name,
               data: inc,
-              smooth: false,
+            });
+            this.incDeathsLine.series.push({
+              type: 'line',
+              name,
+              data: this.smooth(inc, 5),
+              smooth: true,
             });
           }
         }
       });
+
+      this.totalDeaths.series.push({
+        type: 'line',
+        lineStyle: {
+          width: 4,
+        },
+        name: 'Total',
+        smooth: true,
+        data: sum,
+      });
       this.ready = true;
     });
+  }
+
+  private smooth(data: Array<number>, num: number): Array<number> {
+    const result = [];
+    data.forEach((item, index) => {
+      const from = ((index - num) < 0) ? 0 : index - num;
+      const to = ((index + num / 1.5) > data.length - 1) ? data.length - 1 : index + num / 1.5;
+      let sum = 0;
+      const part = data.slice(from, to);
+      part.forEach(avg => sum += avg);
+      result.push(sum / part.length);
+    });
+    return result;
   }
 
   private csv2array(text: string) {

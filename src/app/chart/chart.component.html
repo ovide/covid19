@@ -3,7 +3,7 @@
 <p>Datasets</p>
 <ul class="list-group">
     <li class="list-group-item">
-        <a href="https://github.com/datadista/datasets/raw/master/COVID%2019/ccaa_covid19_fallecidos.csv">
+        <a href="https://github.com/datadista/datasets/blob/master/COVID%2019/ccaa_covid19_fallecidos.csv">
             Morts per comunitat autònoma
         </a>
     </li>
@@ -19,3 +19,4 @@
 <hr>
 <div *ngIf="ready" echarts [options]="incDeaths" class="chart"></div>
 <hr>
+<div *ngIf="ready" echarts [options]="incDeathsLine" class="chart"></div>
