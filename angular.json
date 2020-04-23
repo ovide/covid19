@@ -122,8 +122,17 @@
               "devServerTarget": "covid:serve:production"
             }
           }
+        },
+        "deploy": {
+          "builder": "angular-cli-ghpages:deploy",
+          "options": {
+            "baseHref": "https://ovide.github.io/covid19/",
+            "name": "Albert Ovide",
+            "email": "albertovide@gmail.com"
+          }
         }
       }
-    }},
+    }
+  },
   "defaultProject": "covid"
 }
