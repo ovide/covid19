@@ -18,6 +18,11 @@
         </a>
     </li>
     <li class="list-group-item">
+        <a href="https://github.com/datadista/datasets/blob/master/COVID%2019/nacional_covid19_rango_edad.csv">
+            Rangs d'edat i sexe
+        </a>
+    </li>
+    <li class="list-group-item">
         <a target="_blank" href="https://es.statista.com/estadisticas/472413/poblacion-de-espana-por-comunidad-autonoma/">
             Població per comunitat autònoma
         </a>
@@ -37,3 +42,5 @@
 <div *ngIf="readyReported" echarts [options]="reported" class="chart"></div>
 <hr>
 <div *ngIf="readyUci" echarts [options]="uciOptions" class="chart"></div>
+<hr>
+<div *ngIf="readyNational" echarts [options]="nationalOptions" class="chart"></div>

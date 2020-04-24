@@ -14,7 +14,8 @@ export class ChartComponent implements OnInit {
   readyDeaths = false;
   readyReported = false;
   readyUci = false;
-  limit = 55; // Només mostrem comunitats amb més de 50 morts per 100.000 habs.
+  readyNational = false;
+  limit = 25; // Només mostrem comunitats amb més de 50 morts per 100.000 habs.
   pond = 100000; // Número d'habitants per ponderar
   regressionDegree = 6;
 
@@ -122,10 +123,31 @@ export class ChartComponent implements OnInit {
     }
   };
 
+  nationalOptions = {
+    title: {
+      show: true,
+      text: 'Total nacional per rang d\'edat i sexe',
+      subtext: 'Des del 2020-03-23',
+    },
+    xAxis: {
+      type: 'category',
+      data: []
+    },
+    yAxis: {
+      type: 'value',
+    },
+    series: [],
+    legend: {
+      type: 'plain',
+      bottom: 0,
+    }
+  };
+
 
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
+    this.national();
     const deaths = 'https://raw.githack.com/datadista/datasets/master/COVID 19/ccaa_covid19_fallecidos.csv';
     this.http.get(deaths, {responseType: 'text'}).pipe(map((file: string) => {
       return this.csv2array(file);
@@ -261,6 +283,70 @@ export class ChartComponent implements OnInit {
         }
       });
       this.readyUci = true;
+    });
+  }
+
+  private national() {
+    const url = 'https://raw.githack.com/datadista/datasets/master/COVID 19/nacional_covid19_rango_edad.csv';
+    this.http.get(url, {responseType: 'text'}).pipe(map(file => this.csv2array(file))).subscribe(items => {
+      items.shift();
+      const ranges = ['0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80 y +'];
+      const sexs = ['mujeres', 'hombres'];
+      this.nationalOptions.xAxis.data = ranges.map(value => (value === '80 y +') ? '>=80' : value);
+      const data = {};
+      ranges.forEach(range => {
+        data[range] = {};
+        sexs.forEach(sex => data[range][sex] = [0, 0, 0 , 0]);
+      });
+      items.filter(value => (value[1] !== 'Total') && (value[2] !== 'ambos')).
+      map(value => {
+        if ((value[1] === '80-89' || value[1] === '90 y +')) {
+          value[1] = '80 y +';
+        }
+        return value;
+      }).
+      forEach(value => {
+        try {
+          data[value[1]][value[2]][0] += parseInt(value[3], 10);
+          data[value[1]][value[2]][1] += parseInt(value[4], 10);
+          data[value[1]][value[2]][2] += parseInt(value[5], 10);
+          data[value[1]][value[2]][3] += parseInt(value[6], 10);
+        } catch (error) {
+          console.log(error);
+        }
+
+      });
+      const titles = ['Casos confirmats', 'Hospitalitzats', 'Ingressos UCI', 'Morts'];
+      for (let i = 0; i < 4; i++) {
+        const series = {mujeres: [], hombres: []};
+        Object.keys(data).forEach(range => {
+          Object.keys(data[range]).forEach(sex => {
+            series[sex].push(data[range][sex][i]);
+          });
+        });
+        this.nationalOptions.series.push({
+          type: 'bar',
+          stack: titles[i],
+          name: titles[i],
+          color: i,
+          itemStyle: {
+            color: 'blue',
+          },
+          data: series.hombres,
+        });
+        this.nationalOptions.series.push({
+          type: 'bar',
+          stack: titles[i],
+          name: titles[i],
+          color: i,
+          itemStyle: {
+            color: 'red',
+          },
+          data: series.mujeres,
+        });
+        console.log(series);
+      }
+      this.readyNational = true;
     });
   }
 
