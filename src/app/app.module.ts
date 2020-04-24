@@ -3,6 +3,7 @@ import { NgModule } from '@angular/core';
 import { HttpClientModule } from '@angular/common/http/';
 import { NgxEchartsModule } from 'ngx-echarts';
 
+
 import { AppComponent } from './app.component';
 import { ChartComponent } from './chart/chart.component';
 

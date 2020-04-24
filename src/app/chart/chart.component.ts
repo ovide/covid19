@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
+import { regression } from 'echarts-stat';
 
 
 @Component({
@@ -10,9 +11,14 @@ import { map } from 'rxjs/operators';
 })
 export class ChartComponent implements OnInit {
 
-  ready = false;
-  limit = 50; // Només mostrem comunitats amb més de 50 morts per 100.000 habs.
+  readyDeaths = false;
+  readyReported = false;
+  readyUci = false;
+  limit = 55; // Només mostrem comunitats amb més de 50 morts per 100.000 habs.
   pond = 100000; // Número d'habitants per ponderar
+  regressionDegree = 6;
+
+  private visibleRegions = [];
 
   private pop = {
     '01': 8426405,
@@ -39,7 +45,7 @@ export class ChartComponent implements OnInit {
   totalDeaths = {
     title: {
       show: true,
-      text: 'Morts per comunitat acumulatiu',
+      text: 'Acumulatiu de morts per comunitat',
       subtext: 'Cada 100.000 habitants',
     },
     xAxis: {
@@ -76,11 +82,11 @@ export class ChartComponent implements OnInit {
     }
   };
 
-  incDeathsLine = {
+  reported = {
     title: {
       show: true,
-      text: 'Morts diaris per comunitat (suavitzat)',
-      subtext: 'Morts cada 100.000 habitants',
+      text: 'Acumulatiu de casos confirmats per comunitat',
+      subtext: 'Cada 100.000 habitants',
     },
     xAxis: {
       type: 'category',
@@ -96,6 +102,27 @@ export class ChartComponent implements OnInit {
     }
   };
 
+  uciOptions = {
+    title: {
+      show: true,
+      text: 'Porcentatge llits uci',
+      subtext: 'Respecte el seu propi màxim historic'
+    },
+    xAxis: {
+      type: 'category',
+      data: []
+    },
+    yAxis: {
+      type: 'value',
+    },
+    series: [],
+    legend: {
+      type: 'plain',
+      bottom: 0,
+    }
+  };
+
+
   constructor(private http: HttpClient) {}
 
   ngOnInit() {
@@ -105,7 +132,6 @@ export class ChartComponent implements OnInit {
     })).subscribe(items => {
       this.totalDeaths.xAxis.data = items.shift().slice(2);
       this.incDeaths.xAxis.data = this.totalDeaths.xAxis.data;
-      this.incDeathsLine.xAxis.data = this.totalDeaths.xAxis.data;
       const sum = [];
       for (let i = 0; i < items[0].length - 2; i++) {
         sum[i] = 0;
@@ -130,6 +156,7 @@ export class ChartComponent implements OnInit {
             inc.push(diff > 0 ? diff : 0);
           });
           if (total[total.length - 1] > this.limit ) {
+            this.visibleRegions.push(id);
             this.totalDeaths.series.push({
               type: 'line',
               name,
@@ -141,10 +168,10 @@ export class ChartComponent implements OnInit {
               name,
               data: inc,
             });
-            this.incDeathsLine.series.push({
+            this.incDeaths.series.push({
               type: 'line',
               name,
-              data: this.smooth(inc, 5),
+              data: this.getRegression(inc, this.regressionDegree),
               smooth: true,
             });
           }
@@ -160,7 +187,80 @@ export class ChartComponent implements OnInit {
         smooth: true,
         data: sum,
       });
-      this.ready = true;
+      this.readyDeaths = true;
+      this.reportedCases();
+      this.uci();
+    });
+  }
+
+  private getRegression(data: Array<number>, degree: number) {
+    const input = [];
+    const first = data.findIndex(value => value > 0);
+    data.forEach((value, index) => input.push([index, value]));
+    const result = regression('polynomial', input, degree).points;
+    return result.map((value, idx) => (value[1] > 0 && idx > first) ? value[1] : 0);
+  }
+
+  private reportedCases() {
+    const reported = 'https://raw.githack.com/datadista/datasets/master/COVID 19/ccaa_covid19_casos.csv';
+    this.http.get(reported, {responseType: 'text'}).pipe(map((file: string) => {
+      return this.csv2array(file);
+    })).subscribe(items => {
+      this.reported.xAxis.data = items.shift().slice(2);
+      items.forEach(line => {
+        const id = line.shift();
+        if ((id !== '00') && (id !== '') && (this.visibleRegions.indexOf(id) >= 0)) {
+          const name = line.shift();
+          const iline: Array<number> = line.map(item => parseInt(item, 10));
+          const total = iline.map(item => item * this.pond / (this.pop[id]));
+          if (total[total.length - 1] > this.limit ) {
+            this.reported.series.push({
+              type: 'line',
+              name,
+              smooth: true,
+              data: total,
+            });
+          }
+        }
+      });
+      this.readyReported = true;
+    });
+  }
+
+  private uci() {
+    const uci = 'https://raw.githack.com/datadista/datasets/master/COVID 19/ccaa_covid19_uci.csv';
+    this.http.get(uci, {responseType: 'text'}).pipe(map(file => this.csv2array(file))).subscribe(items => {
+      this.uciOptions.xAxis.data = items.shift().slice(2);
+      items.forEach(line => {
+        const id = line.shift();
+        if ((id !== '00') && (id !== '') && (this.visibleRegions.indexOf(id) >= 0)) {
+          const name = line.shift();
+          const iline: Array<number> = line.map(item => parseInt(item, 10));
+          let max = 0;
+          iline.forEach(value => {
+            if (value > max) {
+              max = value;
+            }
+          });
+          const total = iline.map(item => item / max * 100);
+
+          if (total[total.length - 1] > this.limit ) {
+            this.uciOptions.series.push({
+              type: 'bar',
+              name,
+              smooth: true,
+              data: total,
+            });
+            this.uciOptions.series.push({
+              type: 'line',
+              name,
+              smooth: true,
+              data: this.getRegression(total, this.regressionDegree).map(value => value > 100 ? 100 : value),
+            });
+          }
+        }
+      });
+      this.readyUci = true;
     });
   }
 
@@ -175,6 +275,10 @@ export class ChartComponent implements OnInit {
       result.push(sum / part.length);
     });
     return result;
+  }
+
+  changeRegressionDegree(value: string) {
+    this.regressionDegree = parseInt(value, 10);
   }
 
   private csv2array(text: string) {
