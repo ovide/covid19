@@ -15,6 +15,18 @@ export class ChartComponent implements OnInit {
   readyReported = false;
   readyUci = false;
   readyNational = false;
+  readyCountries = false;
+  shownCountries = {
+    Spain: { pop: 40548753, daily: [], total: [] },
+    US: { pop: 310232863, daily: [], total: []  },
+    Italy: { pop: 58090681, daily: [], total: []  },
+    France: { pop: 64057792, daily: [], total: []  },
+    'United Kingdom': { pop: 61284806, daily: [], total: []  },
+    Brazil: { pop: 201103330, daily: [], total: []  },
+    Germany: { pop: 82282988, daily: [], total: []  },
+    Greece: { pop: 10749943, daily: [], total: []  },
+    Portugal: { pop: 10735765, daily: [], total: []  },
+  };
   limit = 25; // Només mostrem comunitats amb més de 50 morts per 100.000 habs.
   pond = 100000; // Número d'habitants per ponderar
   regressionDegree = 6;
@@ -143,6 +155,44 @@ export class ChartComponent implements OnInit {
     }
   };
 
+  countriesOptions = {
+    title: {
+      show: true,
+      text: 'Morts acumulats per pais',
+      subtext: 'Cada 100.000 habitants',
+    },
+    xAxis: {
+      type: 'category',
+    },
+    yAxis: {
+      type: 'value',
+    },
+    series: [],
+    legend: {
+      type: 'plain',
+      bottom: 0,
+    }
+  };
+
+  countriesDailyOptions = {
+    title: {
+      show: true,
+      text: 'Morts diaris per pais',
+      subtext: 'Cada 100.000 habitants',
+    },
+    xAxis: {
+      type: 'category',
+    },
+    yAxis: {
+      type: 'value',
+    },
+    series: [],
+    legend: {
+      type: 'plain',
+      bottom: 0,
+    }
+  };
+
 
   constructor(private http: HttpClient) {}
 
@@ -212,6 +262,7 @@ export class ChartComponent implements OnInit {
       this.readyDeaths = true;
       this.reportedCases();
       this.uci();
+      this.countries();
     });
   }
 
@@ -249,6 +300,39 @@ export class ChartComponent implements OnInit {
     });
   }
 
+  private countries() {
+    this.http.get('https://pomber.github.io/covid19/timeseries.json').subscribe(data => {
+      Object.keys(this.shownCountries).forEach(country => {
+        data[country].forEach(({deaths}) => {
+          const pond = deaths / this.shownCountries[country].pop * 100000;
+          if (pond > 0.5) {
+            const today = pond - this.shownCountries[country].total[this.shownCountries[country].total.length - 1];
+            this.shownCountries[country].daily.push(today);
+            this.shownCountries[country].total.push(pond);
+          }
+        });
+        this.countriesOptions.series.push({
+          type: 'line',
+          smooth: true,
+          name: country,
+          data: this.shownCountries[country].total,
+        });
+        this.countriesDailyOptions.series.push({
+          type: 'bar',
+          name: country,
+          data: this.shownCountries[country].daily.map(value => value < 0 ? 0 : value),
+        });
+        this.countriesDailyOptions.series.push({
+          type: 'line',
+          smooth: true,
+          name: country,
+          data: this.getRegression(this.shownCountries[country].daily, 5).map(value => value < 0 ? 0 : value),
+        });
+      });
+      this.readyCountries = true;
+    });
+  }
+
   private uci() {
     const uci = 'https://raw.githack.com/datadista/datasets/master/COVID 19/ccaa_covid19_uci.csv';
     this.http.get(uci, {responseType: 'text'}).pipe(map(file => this.csv2array(file))).subscribe(items => {
@@ -270,7 +354,6 @@ export class ChartComponent implements OnInit {
             this.uciOptions.series.push({
               type: 'bar',
               name,
-              smooth: true,
               data: total,
             });
             this.uciOptions.series.push({
@@ -298,7 +381,7 @@ export class ChartComponent implements OnInit {
         data[range] = {};
         sexs.forEach(sex => data[range][sex] = [0, 0, 0 , 0]);
       });
-      items.filter(value => (value[1] !== 'Total') && (value[2] !== 'ambos')).
+      items.filter(value => (value[1] !== 'Total') && (value[2] !== 'ambos') && (value[0] !== '')).
       map(value => {
         if ((value[1] === '80-89' || value[1] === '90 y +')) {
           value[1] = '80 y +';
@@ -312,7 +395,7 @@ export class ChartComponent implements OnInit {
           data[value[1]][value[2]][2] += parseInt(value[5], 10);
           data[value[1]][value[2]][3] += parseInt(value[6], 10);
         } catch (error) {
-          console.log(error);
+          console.error(error);
         }
 
       });
@@ -344,7 +427,6 @@ export class ChartComponent implements OnInit {
           },
           data: series.mujeres,
         });
-        console.log(series);
       }
       this.readyNational = true;
     });
