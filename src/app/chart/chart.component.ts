@@ -27,7 +27,7 @@ export class ChartComponent implements OnInit {
     Greece: { pop: 10749943, daily: [], total: []  },
     Portugal: { pop: 10735765, daily: [], total: []  },
   };
-  limit = 25; // Només mostrem comunitats amb més de 50 morts per 100.000 habs.
+  limit = 60; // Només mostrem comunitats amb més de 'limit' morts per 100.000 habs.
   pond = 100000; // Número d'habitants per ponderar
   regressionDegree = 6;
 
@@ -304,7 +304,7 @@ export class ChartComponent implements OnInit {
     this.http.get('https://pomber.github.io/covid19/timeseries.json').subscribe(data => {
       Object.keys(this.shownCountries).forEach(country => {
         data[country].forEach(({deaths}) => {
-          const pond = deaths / this.shownCountries[country].pop * 100000;
+          const pond = deaths / this.shownCountries[country].pop * this.pond;
           if (pond > 0.5) {
             const today = pond - this.shownCountries[country].total[this.shownCountries[country].total.length - 1];
             this.shownCountries[country].daily.push(today);
