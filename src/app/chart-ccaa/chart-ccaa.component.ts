@@ -1,7 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { map } from 'rxjs/operators';
-import { EChartOption } from 'echarts';
 
 @Component({
   selector: 'app-chart-ccaa',
@@ -11,7 +10,7 @@ import { EChartOption } from 'echarts';
 export class ChartCcaaComponent implements OnInit {
   ready = false;
 
-  deaths: EChartOption = {
+  deaths = {
     title: {
       show: true,
       text: 'Morts diaris per comunitat',
@@ -19,6 +18,7 @@ export class ChartCcaaComponent implements OnInit {
     },
     xAxis: {
       type: 'category',
+      data: [],
     },
     yAxis: {
       type: 'value',
