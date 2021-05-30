@@ -35,7 +35,7 @@ export class ChartCcaaComponent implements OnInit {
   };
 
   regs: {[key: string]: {name: string, pop: number, color: string}} = {
-    '00': {name: 'No consta', pop: 0},
+    '00': {name: 'No consta', pop: 0, color: ''},
     '01': {name: 'Andalucia', pop: 8426405, color: '#641E16'},
     '02': {name: 'Aragó', pop: 1320794, color: '#E74C3C'},
     '03': {name: 'Asturies', pop: 1022292, color: '#512E5F'},
@@ -60,7 +60,8 @@ export class ChartCcaaComponent implements OnInit {
   constructor(private http: HttpClient) {  }
 
   ngOnInit() {
-    const URL_DEATHS = 'https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_fallecidos_por_fecha_defuncion_nueva_serie.csv';
+    const URL_DEATHS =
+    'https://raw.githubusercontent.com/datadista/datasets/master/COVID%2019/ccaa_covid19_fallecidos_por_fecha_defuncion_nueva_serie.csv';
     this.http.get(URL_DEATHS, { responseType: 'text'})
     .pipe(map(file => this.csv2array(file)))
     .subscribe(items => {
@@ -95,9 +96,8 @@ export class ChartCcaaComponent implements OnInit {
             smooth: true,
             data: sl,
             connectNulls: true,
-            color: this.regs[code].color,
+            color: this.regs[code].color
           });
-          
           this.deaths.legend.data.push(name);
           this.deaths.legend.selected[name] = false;
         }
@@ -105,15 +105,6 @@ export class ChartCcaaComponent implements OnInit {
       this.ready = true;
     });
 
-  }
-
-
-  private getRegression(data: Array<number>, degree: number) {
-    const input = [];
-    const first = data.findIndex(value => value > 0);
-    data.forEach((value, index) => input.push([index, value]));
-    const result = regression('polynomial', input, degree).points;
-    return result.map((value, idx) => (value[1] > 0 && idx > first) ? value[1] : 0);
   }
 
   private csv2array(text: string) {
