@@ -1,6 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { map } from 'rxjs/operators';
+import { regression } from 'echarts-stat';
+
 
 @Component({
   selector: 'app-chart-ccaa',
@@ -32,27 +34,27 @@ export class ChartCcaaComponent implements OnInit {
     }
   };
 
-  regs: {[key: string]: {name: string, pop: number}} = {
+  regs: {[key: string]: {name: string, pop: number, color: string}} = {
     '00': {name: 'No consta', pop: 0},
-    '01': {name: 'Andalucia', pop: 8426405},
-    '02': {name: 'Aragó', pop: 1320794},
-    '03': {name: 'Asturies', pop: 1022292},
-    '04': {name: 'Balears', pop: 1187808},
-    '05': {name: 'Canaries', pop: 2207225},
-    '06': {name: 'Cantabria', pop: 581684},
-    '07': {name: 'Castella lleó', pop: 2408083},
-    '08': {name: 'Castella la manxa', pop: 2035505},
-    '09': {name: 'Catalunya', pop: 7565099},
-    10: {name: 'Valencia', pop: 4974475},
-    11: {name: 'Extremadura', pop: 1065371},
-    12: {name: 'Galicia', pop: 2700330},
-    13: {name: 'Madrid', pop: 6640705},
-    14: {name: 'Murcia', pop: 1487698},
-    15: {name: 'Navarra', pop: 649966},
-    16: {name: 'Pais basc', pop: 2178048},
-    17: {name: 'La rioja', pop: 313582},
-    18: {name: 'Ceuta', pop: 84843},
-    19: {name: 'Melilla', pop: 84714},
+    '01': {name: 'Andalucia', pop: 8426405, color: '#641E16'},
+    '02': {name: 'Aragó', pop: 1320794, color: '#E74C3C'},
+    '03': {name: 'Asturies', pop: 1022292, color: '#512E5F'},
+    '04': {name: 'Balears', pop: 1187808, color: '#BB8FCE'},
+    '05': {name: 'Canaries', pop: 2207225, color: '#154360'},
+    '06': {name: 'Cantabria', pop: 581684, color: '#85C1E9'},
+    '07': {name: 'Castella lleó', pop: 2408083, color: '#0E6251'},
+    '08': {name: 'Castella la manxa', pop: 2035505, color: '#45B39D'},
+    '09': {name: 'Catalunya', pop: 7565099, color: '#145A32'},
+    10: {name: 'Valencia', pop: 4974475, color: '#58D68D'},
+    11: {name: 'Extremadura', pop: 1065371, color: '#58D68D'},
+    12: {name: 'Galicia', pop: 2700330, color: '#58D68D'},
+    13: {name: 'Madrid', pop: 6640705, color: '#784212'},
+    14: {name: 'Murcia', pop: 1487698, color: '#E59866'},
+    15: {name: 'Navarra', pop: 649966, color: '#E59866'},
+    16: {name: 'Pais basc', pop: 2178048, color: '#CACFD2'},
+    17: {name: 'La rioja', pop: 313582, color: '#CACFD2'},
+    18: {name: 'Ceuta', pop: 84843, color: '#CACFD2'},
+    19: {name: 'Melilla', pop: 84714, color: '#CACFD2'},
   };
 
   constructor(private http: HttpClient) {  }
@@ -68,12 +70,34 @@ export class ChartCcaaComponent implements OnInit {
         const code = line.shift();
         const name = line.shift();
         if (code !== '00' && code in result) {
+          const data = line.map(v => parseInt(v, 10) / result[code].pop * 100000);
+          const sl = [];
+          let sum = 0;
+          const dg = 7;
+          data.forEach((v, i) => {
+            if (i % dg === 0) {
+              sl.push(sum / dg);
+              sum = 0;
+            } else {
+              sum += v;
+              sl.push(null);
+            }
+          });
           this.deaths.series.push({
             type: 'bar',
             name,
-            smooth: true,
-            data: line.map(v => parseInt(v, 10) / result[code].pop * 100000),
+            data,
+            color: this.regs[code].color,
           });
+          this.deaths.series.push({
+            type: 'line',
+            name,
+            smooth: true,
+            data: sl,
+            connectNulls: true,
+            color: this.regs[code].color,
+          });
+          
           this.deaths.legend.data.push(name);
           this.deaths.legend.selected[name] = false;
         }
@@ -81,6 +105,15 @@ export class ChartCcaaComponent implements OnInit {
       this.ready = true;
     });
 
+  }
+
+
+  private getRegression(data: Array<number>, degree: number) {
+    const input = [];
+    const first = data.findIndex(value => value > 0);
+    data.forEach((value, index) => input.push([index, value]));
+    const result = regression('polynomial', input, degree).points;
+    return result.map((value, idx) => (value[1] > 0 && idx > first) ? value[1] : 0);
   }
 
   private csv2array(text: string) {
