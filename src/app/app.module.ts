@@ -6,11 +6,13 @@ import { NgxEchartsModule } from 'ngx-echarts';
 
 import { AppComponent } from './app.component';
 import { ChartComponent } from './chart/chart.component';
+import { ChartCcaaComponent } from './chart-ccaa/chart-ccaa.component';
 
 @NgModule({
   declarations: [
     AppComponent,
     ChartComponent,
+    ChartCcaaComponent,
   ],
   imports: [
     BrowserModule,
