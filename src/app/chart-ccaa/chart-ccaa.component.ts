@@ -14,7 +14,7 @@ export class ChartCcaaComponent implements OnInit {
     title: {
       show: true,
       text: 'Morts diaris per comunitat',
-      subtext: 'Cada 1.000 habitants',
+      subtext: 'Cada 100.000 habitants',
     },
     xAxis: {
       type: 'category',
